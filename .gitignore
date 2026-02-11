@@ -1,0 +1,16 @@
+# Archivos privados con credenciales
+privado/
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Archivos temporales
+*.tmp
+*.bak
+*.swp
+*~
+
+# Logs
+*.log
