@@ -1,0 +1,33 @@
+# COMANDOS PARA SUBIR A GITHUB
+# Ejecuta estos comandos en orden desde la carpeta: C:\Users\darelldeejay\Downloads\Storj
+
+# PASO 1: Inicializar repositorio Git (si no lo tienes ya)
+git init
+
+# PASO 2: Agregar los archivos seguros
+git add .gitignore
+git add github/
+
+# PASO 3: Hacer el primer commit
+git commit -m "Documentación completa de migración de nodo Storj"
+
+# PASO 4: Conectar con tu repositorio de GitHub (reemplaza con tu URL)
+# git remote add origin https://github.com/TU_USUARIO/TU_REPOSITORIO.git
+
+# PASO 5: Subir a GitHub
+# git push -u origin main
+
+# ───────────────────────────────────────────────────────────────
+# VERIFICACIÓN DE SEGURIDAD antes del push:
+# ───────────────────────────────────────────────────────────────
+
+# Ver qué archivos se van a subir:
+git status
+
+# Ver el contenido exacto que se subirá:
+git diff --cached
+
+# ───────────────────────────────────────────────────────────────
+# ⚠️ IMPORTANTE: La carpeta "privado/" está en .gitignore
+# Esto asegura que NUNCA se subirán tus archivos privados
+# ───────────────────────────────────────────────────────────────
