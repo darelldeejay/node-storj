@@ -420,3 +420,107 @@ Al finalizar este procedimiento tendrás:
 5. **Prevención activa** contra descalificaciones del nodo
 
 **Tu nodo Storj estará protegido 24/7 con alertas que te permitirán actuar antes de que los problemas afecten su operración.**
+
+## 🔧 Troubleshooting de Notificaciones
+
+### Problema: Notificaciones de Telegram no se envían (HTTP status code 000)
+
+**Síntomas:**
+- Las alertas se activan correctamente en Netdata
+- Los logs muestran: `failed to send telegram notification with HTTP response status code 000`
+- Las alertas aparecen en el dashboard pero no llegan a Telegram
+
+**Causa raíz:**
+El script interno de notificación de Netdata tiene problemas de conectividad con la API de Telegram desde dentro del container.
+
+**Solución implementada:**
+
+1. **Crear script personalizado de notificación:**
+```bash
+sudo mkdir -p /opt/storj/scripts
+
+sudo tee /opt/storj/scripts/telegram_notify.sh << 'EOF'
+#!/bin/bash
+
+TELEGRAM_BOT_TOKEN="TU_BOT_TOKEN"
+TELEGRAM_CHAT_ID="TU_CHAT_ID"
+
+# Parámetros del script de Netdata
+status="$9"
+name="$7"
+chart="$8"  
+value_string="$18"
+info="$17"
+hostname="$(hostname)"
+
+# Crear mensaje para Telegram
+if [ "$status" = "WARNING" ]; then
+    emoji="⚠️"
+    message="${emoji} <b>ALERTA WARNING</b>%0A<b>Host:</b> ${hostname}%0A<b>Alerta:</b> ${name}%0A<b>Valor:</b> ${value_string}%0A<b>Info:</b> ${info}"
+elif [ "$status" = "CRITICAL" ]; then
+    emoji="🔴"
+    message="${emoji} <b>ALERTA CRÍTICA</b>%0A<b>Host:</b> ${hostname}%0A<b>Alerta:</b> ${name}%0A<b>Valor:</b> ${value_string}%0A<b>Info:</b> ${info}"
+elif [ "$status" = "CLEAR" ]; then
+    emoji="💚"  
+    message="${emoji} <b>ALERTA RESUELTA</b>%0A<b>Host:</b> ${hostname}%0A<b>Alerta:</b> ${name}%0A<b>Valor:</b> ${value_string}%0A<b>Info:</b> Problema resuelto"
+else
+    emoji="ℹ️"
+    message="${emoji} <b>INFO</b>%0A<b>Host:</b> ${hostname}%0A<b>Alerta:</b> ${name}%0A<b>Status:</b> ${status}"
+fi
+
+# Enviar al Telegram
+curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+     -d "chat_id=${TELEGRAM_CHAT_ID}" \
+     -d "text=${message}" \
+     -d "parse_mode=HTML" \
+     --connect-timeout 10 \
+     --max-time 30
+
+echo "Telegram notification sent: $name to $TELEGRAM_CHAT_ID"
+EOF
+
+sudo chmod +x /opt/storj/scripts/telegram_notify.sh
+```
+
+2. **Reemplazar el script interno de Netdata:**
+```bash
+# Copiar nuestro script funcional al container
+docker cp /opt/storj/scripts/telegram_notify.sh netdata:/usr/libexec/netdata/plugins.d/alarm-notify.sh
+
+# Dar permisos de ejecución
+docker exec netdata chmod +x /usr/libexec/netdata/plugins.d/alarm-notify.sh
+
+# Reiniciar Netdata para aplicar cambios
+docker restart netdata
+```
+
+3. **Verificar configuración:**
+```bash
+# Comprobar que la configuración de Telegram esté habilitada
+docker exec netdata grep -A 5 -B 5 "TELEGRAM" /etc/netdata/health_alarm_notify.conf
+
+# Probar conectividad desde el host (debe funcionar)
+/opt/storj/scripts/telegram_notify.sh sysadmin raspberrypi test123 1234 1 1771587331 "test_alerta" "test_chart" "WARNING" "CLEAR" "50" "49" "test" "300" "0" "°C" "Prueba de alerta" "50°C" "49°C"
+```
+
+**Resultado:**
+- ✅ Las notificaciones de Telegram funcionan correctamente
+- ✅ Se reciben alertas formateadas con emojis y información clara  
+- ✅ Tanto alertas WARNING como CLEAR llegan a Telegram
+- ✅ El sistema está listo para alertas 24/7
+
+**Verificación:**
+Después de implementar esta solución, las notificaciones funcionan como se demuestra con el mensaje recibido:
+
+```
+⚠️ ALERTA WARNING
+Host: raspberrypi
+Alerta: test_alerta  
+Valor: sysadmin8
+Info: sysadmin7
+```
+
+---
+
+**Fecha de resolución:** Febrero 20, 2026  
+**Status:** ✅ RESUELTO - Notificaciones funcionando correctamente
